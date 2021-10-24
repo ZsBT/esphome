@@ -1,0 +1,133 @@
+substitutions:
+  N: termoswitch
+
+esphome:
+  name: termoswitch
+  
+  comment: Thermostat
+  project: 
+    name: zsbt.termoswitch
+    version: "1.0"
+  build_path: Build/termoswitch
+  platform: ESP8266
+  board: esp01_1m
+
+# turn button backlight on by default
+  on_boot:
+    - priority: 700
+      then:
+        - switch.turn_on: ${N}_power
+        - light.turn_on: 
+            id: ${N}_backlight
+            brightness: 50%
+            
+# after WIFI connected, stop blinking
+    - priority: 10
+      then:
+        - output.esp8266_pwm.set_frequency:
+            id: ${N}_pwm
+            frequency: 80
+
+light:
+  - platform: monochromatic
+    id: ${N}_backlight
+    name: ${N} Backlight
+    output: ${N}_pwm
+# allow plusing effect for button backlight
+    effects:
+      - pulse:
+
+  - platform: binary
+    id: ${N}_lamp
+    name: ${N} Lamp
+    output: ${N}_ssr
+    
+output:
+# let the backlight blink fast by default, useful for indicating bootup
+  - platform: esp8266_pwm
+    pin: GPIO14
+    id: ${N}_pwm
+    frequency: 5 Hz
+  - platform: gpio
+    pin: GPIO13
+    id: ${N}_ssr
+
+
+binary_sensor:
+  - platform: gpio
+    id: ${N}_button
+    pin:
+      number: GPIO12
+      inverted: True
+    on_click:
+# toggle the solid state relay
+    - min_length: 50ms
+      max_length: 1s
+      then:
+        - light.toggle: ${N}_lamp
+# toggle device power (as it was before the hack)
+    - min_length: 2s
+      max_length: 10s
+      then:e
+        - switch.toggle: ${N}_power
+# reset device
+    - min_length: 10s
+      max_length: 60s
+      then:
+        - switch.turn_on: ${N}_power
+        - switch.turn_on: ${N}_restart
+
+
+<<: !include Include/tuya.yaml
+<<: !include Include/wifidyn.yaml
+api:
+ota:
+
+# this is where the external NTC thermal resistor was
+tuya:
+    ignore_mcu_update_on_datapoints: 102
+    
+    
+climate:
+  - platform: tuya
+    id: "${N}_climate"
+    name: "${N}"
+    switch_datapoint: 1
+    target_temperature_datapoint: 2
+    current_temperature_datapoint: 3
+    eco_datapoint: 5
+    eco_temperature: 18
+    temperature_multiplier: 0.5
+    visual:
+      temperature_step: 1
+      min_temperature: 15 °C
+      max_temperature: 30 °C
+        
+
+switch:
+  - platform: "tuya"
+    name: "${N} device ON"
+    id: ${N}_power
+    switch_datapoint: 1
+  - platform: "tuya"
+    name: "${N} ECO mode"
+    switch_datapoint: 5
+  - platform: "tuya"
+    name: "${N} childlock"
+    switch_datapoint: 6
+  - platform: restart
+    id: ${N}_restart
+    name: "${N} restart"
+    
+
+
+
+#[19:16:21][C][tuya:039]:   Datapoint 1: switch (value: ON)	<- device on/off
+#[19:16:21][C][tuya:041]:   Datapoint 2: int value (value: 44)	<- target temperature
+#[19:16:21][C][tuya:041]:   Datapoint 3: int value (value: 49)	<- current temperature
+#[19:16:21][C][tuya:045]:   Datapoint 4: enum (value: 1) 	<- 1=manual, 2=programmed
+#[19:16:21][C][tuya:039]:   Datapoint 5: switch (value: OFF)	<- ECO mode
+#[19:16:21][C][tuya:039]:   Datapoint 6: switch (value: ON) 	<- child lock
+#[19:16:21][C][tuya:037]:   Datapoint 101: raw (value: 00.06.28.00.08.1E.1E.0B.1E.1E.0D.1E.00.11.2C.00.16.1E.00.06.28.00.08.28.1E.0B.28.1E.0D.28.00.11.28.00.16.1E.00.06.28.00.08.28.1E.0B.28.1E.0D.28.00.11.28.00.16.1E (54))
+#[19:16:21][C][tuya:041]:   Datapoint 102: int value (value: 138) <- external temperature (read from NTC)
+#[19:16:21][C][tuya:039]:   Datapoint 104: switch (value: ON)	<- unknown

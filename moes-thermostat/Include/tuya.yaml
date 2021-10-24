@@ -1,0 +1,15 @@
+logger:
+  baud_rate: 0
+
+uart:
+  rx_pin: GPIO3
+  tx_pin: GPIO1
+  baud_rate: 9600
+
+tuya:
+  time_id: hatime
+
+time:
+  - platform: homeassistant
+    id: hatime
+    timezone: Europe/Budapest
