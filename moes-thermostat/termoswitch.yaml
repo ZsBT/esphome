@@ -119,6 +119,15 @@ switch:
     id: ${N}_restart
     name: "${N} restart"
     
+select:
+  - platform: "tuya"
+    id: mode
+    name: "${N} mode"
+    enum_datapoint: 4
+    optimistic: true
+    options:
+      0: Programmed
+      1: Manual
 
 
 
